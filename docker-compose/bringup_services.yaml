@@ -1,0 +1,49 @@
+version: "3.3"
+services:
+  # Create an MQTT broker
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sh mosquitto.sh "${MQTT_PORT_TCP}" "${MQTT_PORT_WEBSOCKET}"
+    network_mode: "host"
+    volumes:
+    - type: bind
+      source: ../app/tests/test_utils/mosquitto.sh
+      target: /mosquitto.sh
+
+  # Create Postgres database
+  postgres:
+    image: postgres:14.5
+    environment:
+      - POSTGRES_USER=${POSTGRES_DATABASE_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_DATABASE_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE_NAME}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 --auth-local=scram-sha-256
+    ports:
+      - '${POSTGRES_DATABASE_PORT}:${POSTGRES_DATABASE_PORT}'
+    network_mode: "host"
+    healthcheck:
+      test: pg_isready -U ${POSTGRES_DATABASE_USERNAME}
+      interval: 3s
+      timeout: 10s
+      retries: 5
+
+  # Create an instance of OTA File Service
+  ota-file-service:
+    image: ${OTA_FILE_SERVICE_IMAGE}
+    command: ["--config", "/defaults.yaml"]
+    environment:
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_ID=${S3_ID}
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+    network_mode: "host"
+    volumes:
+    - type: bind
+      source: ../app/config/defaults.yaml
+      target: /defaults.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy

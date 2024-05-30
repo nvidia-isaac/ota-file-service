@@ -1,0 +1,6 @@
+# S3 config
+region_name: us-east-1
+endpoint_url: ""
+# Robot info
+robot_id: robot_a
+cloud_service_url: "http://localhost:9005/api/v1"
